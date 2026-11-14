@@ -3,16 +3,27 @@
 
 Run from anywhere:  python3 tools/update_release.py [--manuals DIR] [--manuals-en DIR] [--check]
 
-Copies the DolphinDos26 ROMs for the C128DCR, the MS-Tools disk and the manuals
+Copies the DolphinDos26 ROMs for the C128DCR, the SpeedDos26 ROMs (drive ROM for the 1571 in
+the C128DCR, C128 kernals with US and German keyboard, C64 kernals), the two EPROM templates
+(drive U3 and kernal switcher U32, German and US version), the MS-Tools disk and the manuals
 (German and English, as PDF) into this repository, writes CHECKSUMS.md5 and
 CHECKSUMS.sha256 over everything published, and reports what is out of date:
 
 - an English manual is missing or older than the German one;
-- a manual does not state the MD5 of a ROM published here;
-- a file in rom/ is not one of the allowed DolphinDos26 ROMs.
+- a manual does not state the MD5 of a ROM or EPROM template published here;
+- a file in rom/ is not one of the allowed DolphinDos26 or SpeedDos26 files;
+- banks 5 and 6 of the templates do not hold SpeedDos26 as released: the drive template
+  C1571CRSpeedDOS26.bin in both banks, the kernal images C128SpeedDos26-EN.bin (bank 5, US
+  keyboard) and C128SpeedDos26-DE.bin (bank 6, German keyboard), each with C64SpeedDos26.bin
+  as the C64 kernal. Drive and kernal images are always released together.
 
-Only the DolphinDos26 ROMs and the EPROM template with Commodore DOS, DolphinDOS 3 and DolphinDos26 may be published. ROM images with original JiffyDOS code
-(C64, C128, 1541, 1571) or complete EPROM images must never be added to this repository.
+Only the DolphinDos26 ROMs, the SpeedDos26 ROMs and the EPROM templates with Commodore ROMs,
+DolphinDOS 3 (bank 3), DolphinDos26 (bank 4) and SpeedDos26 (banks 5 and 6) may be published.
+The DolphinDos26 and SpeedDos26 kernals contain JiffyDOS transfer routines (see README.md and
+LICENSE.md); that is allowed, in the single kernal files and in banks 4, 5 and 6 of the kernal
+images. All other banks and every drive ROM must stay free of JiffyDOS. ROM images with original
+JiffyDOS drive firmware or original JiffyDOS kernals (C64, C128, 1541, 1571) and other complete
+EPROM images must never be added to this repository.
 
 The hardware files (hardware/) are maintained here directly and are only checksummed.
 The script exits with status 1 if anything is out of date. --check changes nothing.
@@ -38,12 +49,29 @@ def find_root():
 
 ROOT = find_root()
 ROMS = ['C1571_DOLPHINDOS26.bin', 'C128DolphinDos26-US.BIN', 'C128DolphinDos26-DE.BIN', 'C64IIDolphinDos26.bin']
-# EPROM template from Builds: Commodore DOS 318047-01, DolphinDOS 3 in bank 3, DolphinDos26 in bank 4
+# SpeedDos26 from Builds (SpeedDos26 project): drive ROM for the 1571 in the C128DCR (32 KB, based
+# on Commodore DOS 318047-01, no JiffyDOS code) and the kernals the kernal images are built from
+SD26_DRIVE = 'C1571CRSpeedDOS26.bin'
+SD26_K128 = {4: 'C128SpeedDos26-EN.bin', 5: 'C128SpeedDos26-DE.bin'}    # bank index -> C128 kernal
+SD26_K64 = 'C64SpeedDos26.bin'          # C64 kernal at $xA000 of banks 5 and 6
+SD26_K64II = 'C64IISpeedDos26.bin'      # C64 BASIC + the same kernal (16 KB, $x8000-$xBFFF)
+SD26_ROMS = [SD26_DRIVE, SD26_K128[4], SD26_K128[5], SD26_K64, SD26_K64II]
+# EPROM template (U3) from Builds (SpeedDos26/1571 make eprom, tools/eprom_c128dcr.py): Commodore DOS
+# 318047-01 in banks 1, 2, 7 and 8, DolphinDOS 3 in bank 3, DolphinDos26 in bank 4, SpeedDos26
+# (C1571CRSpeedDOS26.bin, upper half) in banks 5 and 6. Must be free of JiffyDOS in every bank.
 TEMPLATES = ['C1571_C128DCR_29F040.BIN']
-# Kernal switcher (U32) images from Builds (C128DD26 make builds, tools/u32_image.py): German and
-# international/US version. Bank 4 holds the DolphinDos26 kernals (with JiffyDOS transfer routines,
-# allowed); all other banks must be free of JiffyDOS. Not listed in the manual, so no MD5 check there.
+# Kernal switcher (U32) images from Builds (same build step): German and international/US version.
+# Both hold in bank 4 the DolphinDos26 kernals, in bank 5 C128SpeedDos26-EN.bin (US keyboard) and in
+# bank 6 C128SpeedDos26-DE.bin (German keyboard), each with C64SpeedDos26.bin at $xA000 for C64 mode.
+# These kernals contain JiffyDOS transfer routines (allowed); all other banks must be free of
+# JiffyDOS. C128DD26/tools/u32_image.py builds the images WITHOUT SpeedDos26 - not for this release.
 KERNAL_IMAGES = ['C128DCR_KERNAL_29F040-DE.BIN', 'C128DCR_KERNAL_29F040-US.BIN']
+JIFFY_BANKS = (3, 4, 5)                 # bank index: banks 4, 5 and 6 of the kernal images
+# DolphinDos26 kernals in bank 4 of the kernal images
+DD26_K64II = 'C64IIDolphinDos26.bin'
+DD26_K128 = {'C128DCR_KERNAL_29F040-DE.BIN': 'C128DolphinDos26-DE.BIN',
+             'C128DCR_KERNAL_29F040-US.BIN': 'C128DolphinDos26-US.BIN'}
+BANK = 65536
 MANUALS = {'MultiSpeederC128DCR-1571_Handbuch.pdf': 'MultiSpeederC128DCR-1571_Manual.pdf'}
 CHECKSUMMED = ('rom', 'ms-tools', 'manuals', 'hardware', 'rom-builder')
 # Browser tool from its development folder MS-ROM-Builder-C128DCR (contains no ROM data)
@@ -80,24 +108,68 @@ def main():
     man_en = pathlib.Path(a.manuals_en) if a.manuals_en else root / 'dd25' / 'doc' / 'handbuch' / 'build'
     bad = []
 
-    for r in ROMS + TEMPLATES + KERNAL_IMAGES:
+    published = ROMS + SD26_ROMS + TEMPLATES + KERNAL_IMAGES
+    for r in published:
         copy(builds / r, REPO / 'rom' / r, a.check, bad)
     for p in (REPO / 'rom').glob('*'):
-        if p.name not in ROMS + TEMPLATES + KERNAL_IMAGES:
-            bad.append('not allowed in rom/: %s (only the DolphinDos26 ROMs may be published)' % p.name)
-    for t in TEMPLATES:
-        p = REPO / 'rom' / t
-        if p.exists() and b'JIFFY' in p.read_bytes().upper():
+        if p.name not in published:
+            bad.append('not allowed in rom/: %s (only the DolphinDos26 and SpeedDos26 ROMs may be published)'
+                       % p.name)
+
+    def rom(name):
+        """Content of a published ROM, or None (already reported as missing source / out of date)."""
+        p = REPO / 'rom' / name
+        return p.read_bytes() if p.exists() else None
+
+    def same(image, n, off, name, what):
+        """Bank n (index) of the image must hold the published file `name` at offset `off`."""
+        d = rom(name)
+        if d is None or image[1][n * BANK + off:n * BANK + off + len(d)] != d:
+            bad.append('%s: bank %d does not hold %s at $x%04X (%s)' % (image[0], n + 1, name, off, what))
+
+    # drive ROMs must never contain JiffyDOS
+    for t in TEMPLATES + ['C1571_DOLPHINDOS26.bin', SD26_DRIVE]:
+        d = rom(t)
+        if d is not None and b'JIFFY' in d.upper():
             bad.append('JiffyDOS found in %s' % t)
+    d = rom(SD26_DRIVE)
+    if d is not None and len(d) != 32768:
+        bad.append('%s is not 32 KB' % SD26_DRIVE)
+    k64, k64ii = rom(SD26_K64), rom(SD26_K64II)
+    if k64 is not None and k64ii is not None and k64ii[8192:] != k64:
+        bad.append('%s does not end with the kernal %s' % (SD26_K64II, SD26_K64))
+    # drive template: SpeedDos26 in the upper half of banks 5 and 6, lower half empty
+    for t in TEMPLATES:
+        b = rom(t)
+        if b is None:
+            continue
+        if len(b) != 8 * BANK:
+            bad.append('%s is not 512 KB' % t)
+            continue
+        for n in SD26_K128:
+            same((t, b), n, 0x8000, SD26_DRIVE, 'SpeedDos26 drive ROM')
+            if b[n * BANK:n * BANK + 0x8000] != b'\xff' * 0x8000:
+                bad.append('%s: lower half of bank %d is not empty ($FF)' % (t, n + 1))
+    # kernal images: DolphinDos26 in bank 4, SpeedDos26 in bank 5 (US keyboard) and bank 6 (German
+    # keyboard) of BOTH images; JiffyDOS transfer routines only in these three banks
     for t in KERNAL_IMAGES:
-        p = REPO / 'rom' / t
-        if p.exists():
-            b = p.read_bytes()
-            if len(b) != 524288:
-                bad.append('%s is not 512 KB' % t)
-            for n in range(8):
-                if n != 3 and b'JIFFY' in b[n * 65536:(n + 1) * 65536].upper():
-                    bad.append('JiffyDOS found in bank %d of %s (only bank 4 may hold it)' % (n + 1, t))
+        b = rom(t)
+        if b is None:
+            continue
+        if len(b) != 8 * BANK:
+            bad.append('%s is not 512 KB' % t)
+            continue
+        same((t, b), 3, 0x8000, DD26_K64II, 'C64 BASIC and kernal DolphinDos26')
+        same((t, b), 3, 0xC000, DD26_K128[t], 'C128 kernal DolphinDos26')
+        for n, k128 in SD26_K128.items():
+            same((t, b), n, 0x8000, SD26_K64II, 'C64 BASIC and kernal SpeedDos26')
+            same((t, b), n, 0xA000, SD26_K64, 'C64 kernal SpeedDos26')
+            same((t, b), n, 0xC000, k128, 'C128 kernal SpeedDos26')
+        for n in range(8):
+            if b[n * BANK:n * BANK + 0x8000] != b'\xff' * 0x8000:
+                bad.append('%s: lower half of bank %d is not empty ($FF)' % (t, n + 1))
+            if n not in JIFFY_BANKS and b'JIFFY' in b[n * BANK:(n + 1) * BANK].upper():
+                bad.append('JiffyDOS found in bank %d of %s (only banks 4, 5 and 6 may hold it)' % (n + 1, t))
     for p in REPO.rglob('*'):
         if '.git' not in p.parts and 'jiffy' in p.name.lower():
             bad.append('file name suggests JiffyDOS content, remove it: %s' % p.relative_to(REPO))
@@ -122,7 +194,7 @@ def main():
         except (OSError, subprocess.CalledProcessError) as e:
             bad.append('cannot read %s: %s' % (pdf.name, e))
             continue
-        for f in [REPO / 'rom' / r for r in ROMS + TEMPLATES] + [REPO / 'ms-tools' / 'ms-tools.d64']:
+        for f in [REPO / 'rom' / r for r in published] + [REPO / 'ms-tools' / 'ms-tools.d64']:
             if f.exists() and hashlib.md5(f.read_bytes()).hexdigest()[:16] not in flat:
                 bad.append('%s does not state the MD5 of %s' % (pdf.name, f.name))
 
