@@ -74,8 +74,9 @@ DD26_K128 = {'C128DCR_KERNAL_29F040-DE.BIN': 'C128DolphinDos26-DE.BIN',
 BANK = 65536
 MANUALS = {'MultiSpeederC128DCR-1571_Handbuch.pdf': 'MultiSpeederC128DCR-1571_Manual.pdf'}
 CHECKSUMMED = ('rom', 'ms-tools', 'manuals', 'hardware', 'rom-builder')
-# Browser tool from its development folder MS-ROM-Builder-C128DCR (contains no ROM data)
-ROM_BUILDER = ('MS-ROM-Builder-C128DCR/index.html', 'rom-builder/MS-ROM-Builder-C128DCR.html')
+# Browser tool MS-ROM-Builder (one tool for 1541, external 1571 and C128DCR) from its development
+# folder MS-ROM-Builder-C128DCR; it contains no ROM data
+ROM_BUILDER = ('MS-ROM-Builder-C128DCR/index.html', 'rom-builder/MS-ROM-Builder.html')
 
 
 def sha(p):

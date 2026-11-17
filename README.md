@@ -8,7 +8,7 @@
 
 | | English | Deutsch |
 |---|---|---|
-| MS-ROM-Builder-C128DCR (browser tool for your own EPROM images) | [HTML](rom-builder/MS-ROM-Builder-C128DCR.html) | [HTML](rom-builder/MS-ROM-Builder-C128DCR.html) |
+| MS-ROM-Builder (browser tool for your own EPROM images) | [HTML](rom-builder/MS-ROM-Builder.html) | [HTML](rom-builder/MS-ROM-Builder.html) |
 | 1571 Multi-Speeder V3 manual (hardware, build instructions, BOM) | [PDF](manuals/en/MultiSpeederC128DCR-1571_Manual.pdf) | [PDF](manuals/de/MultiSpeederC128DCR-1571_Handbuch.pdf) |
 | DolphinDos26 manual (operation, commands, MS-Tools) | [DolphinDOS26](https://github.com/FraEgg/DolphinDOS) | [DolphinDOS26](https://github.com/FraEgg/DolphinDOS) |
 
@@ -80,7 +80,10 @@ The DolphinDos26 ROMs are the same as in the [DolphinDOS26](https://github.com/F
 | `4@RNROM` | `$30000` | **C1571DolphinDos26** | `C64IIDolphinDos26.bin`, `C128DolphinDos26-DE.BIN` (DE) or `C128DolphinDos26-US.BIN` (US) |
 | `5@RNROM` | `$40000` | **SpeedDos26** (`C1571CRSpeedDOS26.bin`) | C64 BASIC 901226-01, `C64SpeedDos26.bin`, `C128SpeedDos26-EN.bin` (**US keyboard**) – in both templates |
 | `6@RNROM` | `$50000` | **SpeedDos26** (`C1571CRSpeedDOS26.bin`) | C64 BASIC 901226-01, `C64SpeedDos26.bin`, `C128SpeedDos26-DE.bin` (**German keyboard**) – in both templates |
-| `7@RNROM`, `8@RNROM` | `$60000`, `$70000` | Commodore DOS 1571CR (318047-01) | as banks 1 and 2 |
+| `7@RNROM` | `$60000` | Commodore DOS 1571CR (318047-01); recommended place for your own JiffyDOS ROM | as banks 1 and 2; with JiffyDOS the matching JiffyDOS kernals |
+| `8@RNROM` | `$70000` | Commodore DOS 1571CR (318047-01), free for further DOS versions | as banks 1 and 2 |
+
+**JiffyDOS:** JiffyDOS is not part of the project and is not contained in any template. If you own a licensed JiffyDOS ROM for the 1571, the best place for it is **bank 7** (`7@RNROM`): the 32 KB file goes into the upper half of the bank, from offset `$68000` of the image. Bank 8 is suitable as well. In the kernal switcher, the matching JiffyDOS kernals for the C128 and the C64 then belong in the same bank. The easiest way is the MS-ROM-Builder (see below).
 
 ## SpeedDos26
 
@@ -115,17 +118,16 @@ The complete bill of materials with DigiKey and Mouser links, the assembly order
 <img src="assets/kernal-switcher.png" alt="Kernal switcher" width="300">
 </p>
 
-## MS-ROM-Builder-C128DCR (build your own EPROM images)
+## MS-ROM-Builder (build your own EPROM images)
 
-[`rom-builder/MS-ROM-Builder-C128DCR.html`](rom-builder/MS-ROM-Builder-C128DCR.html) is a browser tool for assembling both 512 KB EPROM images yourself: the drive EPROM U3 and the kernal switcher U32. Download the file and open it in a current browser – no installation, works offline on Windows, macOS and Linux, and the ROM files never leave your computer. The tool contains no ROMs.
+[`rom-builder/MS-ROM-Builder.html`](rom-builder/MS-ROM-Builder.html) is a browser tool for assembling both 512 KB EPROM images of the C128DCR: the drive EPROM U3 and the kernal switcher U32 yourself. Download the file and open it in a current browser – no installation, works offline on Windows, macOS and Linux, and the ROM files never leave your computer. The tool contains no ROMs. It is one tool for all three Multi-Speeder boards (1541, external 1571, C128DCR); choose **C128DCR** at the top right.
 
-- Both EPROMs with their eight banks and the slots for 4, 8, 16, 32 and 64 KB; our templates `C1571_C128DCR_29F040.BIN` and `C128DCR_KERNAL_29F040-DE/-US.BIN` are preset.
-- SpeedDos26: in banks 5 and 6 the preset of the tool still contains the Commodore ROMs. For SpeedDos26, place `C1571CRSpeedDOS26.bin` (drive) and `C64IISpeedDos26.bin` with `C128SpeedDos26-EN.bin` (bank 5) or `C128SpeedDos26-DE.bin` (bank 6) onto the slots of these banks yourself.
+- Both EPROMs with their eight banks and the slots for 4, 8, 16, 32 and 64 KB; our templates `C1571_C128DCR_29F040.BIN` and `C128DCR_KERNAL_29F040-DE/-US.BIN` are preset, with SpeedDos26 in banks 5 and 6: `C1571CRSpeedDOS26.bin` (drive) and `C64IISpeedDos26.bin` with `C128SpeedDos26-EN.bin` (bank 5) or `C128SpeedDos26-DE.bin` (bank 6).
 - Drop your ROM files in: they are assigned by their checksum, or placed directly onto a slot. Finished images can be opened, split into their parts and single banks replaced.
 - Checks for missing, different or unknown ROMs, JiffyDOS content, reset vectors and matching drive/kernal banks; shows solder jumper J2 for 29F040, SST39SF040 or 27C040.
 - Download the finished 512 KB file with its MD5; save and load the layout as a small project file (no ROM data). German and English.
 
-<p align="center"><img src="assets/ms-rom-builder.png" alt="MS-ROM-Builder-C128DCR" width="640"></p>
+<p align="center"><img src="assets/ms-rom-builder.png" alt="MS-ROM-Builder" width="640"></p>
 
 ## Installation in short
 
@@ -156,7 +158,7 @@ rom/             DolphinDos26 ROMs for the 1571 and the C128 (C128 and C64 mode)
 ms-tools/        ms-tools.d64
 hardware/        Gerber, schematics, BOM, GAL and ATmega files (V3.3)
 assets/          Images for this page
-rom-builder/     MS-ROM-Builder-C128DCR: browser tool for your own EPROM images
+rom-builder/     MS-ROM-Builder: browser tool for your own EPROM images
 tools/           Maintenance script for this repository
 CHECKSUMS.*      MD5 and SHA-256 of all published files
 ```
@@ -247,7 +249,10 @@ Die DolphinDos26-ROMs sind dieselben wie im Release von [DolphinDOS26](https://g
 | `4@RNROM` | `$30000` | **C1571DolphinDos26** | `C64IIDolphinDos26.bin`, `C128DolphinDos26-DE.BIN` (DE) bzw. `C128DolphinDos26-US.BIN` (US) |
 | `5@RNROM` | `$40000` | **SpeedDos26** (`C1571CRSpeedDOS26.bin`) | C64-BASIC 901226-01, `C64SpeedDos26.bin`, `C128SpeedDos26-EN.bin` (**US-Tastatur**) – in beiden Vorlagen |
 | `6@RNROM` | `$50000` | **SpeedDos26** (`C1571CRSpeedDOS26.bin`) | C64-BASIC 901226-01, `C64SpeedDos26.bin`, `C128SpeedDos26-DE.bin` (**deutsche Tastatur**) – in beiden Vorlagen |
-| `7@RNROM`, `8@RNROM` | `$60000`, `$70000` | Commodore-DOS 1571CR (318047-01) | wie Bank 1 und 2 |
+| `7@RNROM` | `$60000` | Commodore-DOS 1571CR (318047-01); Empfehlung: Platz für ein eigenes JiffyDOS-ROM | wie Bank 1 und 2; mit JiffyDOS die passenden JiffyDOS-Kernals |
+| `8@RNROM` | `$70000` | Commodore-DOS 1571CR (318047-01), frei für weitere DOS-Versionen | wie Bank 1 und 2 |
+
+**JiffyDOS:** JiffyDOS gehört nicht zum Projekt und ist in keiner Vorlage enthalten. Wer ein eigenes, lizenziertes JiffyDOS-ROM für die 1571 besitzt, legt es am besten in **Bank 7** (`7@RNROM`): die 32-KB-Datei kommt in die obere Hälfte der Bank, ab Offset `$68000` des Abbilds. Bank 8 eignet sich ebenso. Im Kernal-Switcher gehören dann die passenden JiffyDOS-Kernals für C128 und C64 in dieselbe Bank. Am einfachsten geht das mit dem MS-ROM-Builder (siehe unten).
 
 ## SpeedDos26
 
@@ -276,17 +281,16 @@ Die vollständige Stückliste mit DigiKey- und Mouser-Links, die Bestückungsrei
 
 **Platinen bestellen:** Die Platinen fertigt jeder übliche Leiterplattenhersteller aus den Gerber-Dateien, oder sie werden direkt über mein Projekt bei PCBWay bestellt: [Switchless 8x Multi-Floppy-Speeder für den C128DCR bei PCBWay](https://www.pcbway.com/project/shareproject/Switchless_8x_Multi_Floppy_Speeder_with_32_KB_RAM_Expansion_for_the_Commodore_C1_557a83c8.html).
 
-## MS-ROM-Builder-C128DCR (EPROM-Abbilder selbst bauen)
+## MS-ROM-Builder (EPROM-Abbilder selbst bauen)
 
-[`rom-builder/MS-ROM-Builder-C128DCR.html`](rom-builder/MS-ROM-Builder-C128DCR.html) ist ein Browser-Tool, mit dem sich beide 512-KB-EPROM-Abbilder selbst zusammenstellen lassen: das Laufwerks-EPROM U3 und der Kernal-Switcher U32. Die Datei herunterladen und in einem aktuellen Browser öffnen – ohne Installation, offline unter Windows, macOS und Linux, und die ROM-Dateien verlassen den Rechner nicht. Das Tool enthält keine ROMs.
+[`rom-builder/MS-ROM-Builder.html`](rom-builder/MS-ROM-Builder.html) ist ein Browser-Tool, mit dem sich beide 512-KB-EPROM-Abbilder des C128DCR: das Laufwerks-EPROM U3 und den Kernal-Switcher U32 selbst zusammenstellen lässt. Die Datei herunterladen und in einem aktuellen Browser öffnen – ohne Installation, offline unter Windows, macOS und Linux, und die ROM-Dateien verlassen den Rechner nicht. Das Tool enthält keine ROMs. Es ist ein Tool für alle drei Multi-Speeder-Platinen (1541, externe 1571, C128DCR); oben rechts **C128DCR** wählen.
 
-- Beide EPROMs mit ihren acht Bänken und den Steckplätzen für 4, 8, 16, 32 und 64 KB; unsere Vorlagen `C1571_C128DCR_29F040.BIN` und `C128DCR_KERNAL_29F040-DE/-US.BIN` sind voreingestellt.
-- SpeedDos26: In Bank 5 und 6 enthält die Voreinstellung des Tools noch die Commodore-ROMs. Für SpeedDos26 werden `C1571CRSpeedDOS26.bin` (Laufwerk) und `C64IISpeedDos26.bin` mit `C128SpeedDos26-EN.bin` (Bank 5) bzw. `C128SpeedDos26-DE.bin` (Bank 6) selbst auf die Steckplätze dieser Bänke gelegt.
+- Beide EPROMs mit ihren acht Bänken und den Steckplätzen für 4, 8, 16, 32 und 64 KB; unsere Vorlagen `C1571_C128DCR_29F040.BIN` und `C128DCR_KERNAL_29F040-DE/-US.BIN` sind voreingestellt, mit SpeedDos26 in Bank 5 und 6: `C1571CRSpeedDOS26.bin` (Laufwerk) und `C64IISpeedDos26.bin` mit `C128SpeedDos26-EN.bin` (Bank 5) bzw. `C128SpeedDos26-DE.bin` (Bank 6).
 - ROM-Dateien hineinziehen: Sie werden über ihre Prüfsumme zugeordnet oder direkt auf einen Steckplatz gelegt. Fertige Abbilder lassen sich öffnen, in ihre Teile zerlegen und einzelne Bänke tauschen.
 - Prüfung auf fehlende, abweichende oder unbekannte ROMs, JiffyDOS-Inhalt, Reset-Vektoren und zueinander passende Laufwerks- und Kernal-Bänke; zeigt die Lötbrücke J2 für 29F040, SST39SF040 oder 27C040.
 - Die fertige 512-KB-Datei mit MD5 herunterladen; die Belegung als kleine Projektdatei speichern und laden (ohne ROM-Daten). Deutsch und Englisch.
 
-<p align="center"><img src="assets/ms-rom-builder.png" alt="MS-ROM-Builder-C128DCR" width="640"></p>
+<p align="center"><img src="assets/ms-rom-builder.png" alt="MS-ROM-Builder" width="640"></p>
 
 ## Einbau in Kürze
 
@@ -315,7 +319,7 @@ rom/             DolphinDos26-ROMs für die 1571 und den C128 (C128- und C64-Mod
 ms-tools/        ms-tools.d64
 hardware/        Gerber, Schaltpläne, Stückliste, GAL- und ATmega-Dateien (V3.3)
 assets/          Bilder für diese Seite
-rom-builder/     MS-ROM-Builder-C128DCR: Browser-Tool für eigene EPROM-Abbilder
+rom-builder/     MS-ROM-Builder: Browser-Tool für eigene EPROM-Abbilder
 tools/           Pflegeskript für dieses Repository
 CHECKSUMS.*      MD5 und SHA-256 aller veröffentlichten Dateien
 ```

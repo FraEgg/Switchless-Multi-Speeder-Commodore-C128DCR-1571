@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MS-ROM-Builder-C128DCR</title>
+<title>MS-ROM-Builder</title>
 <style>
 :root {
+  color-scheme: light;        /* browser controls (select, scroll bars) follow the theme - needed in WebKit/Safari */
   --bg: #f4f5f7; --panel: #ffffff; --ink: #1d2330; --muted: #667085; --line: #d9dde5;
   --accent: #2f5bd3; --accent-ink: #ffffff; --ok: #1f8a4c; --warn: #b7791f; --err: #c0392b;
   --ok-bg: #e6f4ec; --warn-bg: #fdf3e2; --err-bg: #fbe9e7; --free: #e9ecf1; --chip: #eef2ff;
@@ -13,6 +14,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #14171d; --panel: #1d222b; --ink: #e6e9ef; --muted: #98a2b3; --line: #2f3643;
     --accent: #6e8ff0; --accent-ink: #0d1117; --ok: #4cc283; --warn: #e2a849; --err: #f07167;
     --ok-bg: #16301f; --warn-bg: #352a14; --err-bg: #3a1c19; --free: #262c37; --chip: #222b45;
@@ -87,20 +89,18 @@ input[type=file] { display: none; }
 <body>
 <header>
   <div>
-    <h1>MS-ROM-Builder-C128DCR <span class="badge" id="ver"></span></h1>
-    <div class="sub" data-t="subtitle"></div>
+    <h1>MS-ROM-Builder <span class="badge" id="ver"></span></h1>
+    <div class="sub" id="subtitle"></div>
   </div>
   <div class="spacer"></div>
+  <div class="seg" id="board"><button data-board="1541">1541</button><button data-board="1571">1571</button><button data-board="c128dcr">C128DCR</button></div>
   <div class="seg" id="lang"><button data-lang="de">DE</button><button data-lang="en">EN</button></div>
 </header>
 
 <main>
   <section>
     <div class="toolbar">
-      <div class="tabs" id="tabs">
-        <button data-target="u3" data-t="tab_u3"></button>
-        <button data-target="u32" data-t="tab_u32"></button>
-      </div>
+      <div class="tabs" id="tabs"></div>
       <div class="spacer"></div>
       <label class="muted" data-t="preset"></label>
       <select id="preset"></select>
@@ -147,7 +147,7 @@ input[type=file] { display: none; }
     <div class="card muted" style="font-size:12px" data-t="privacy"></div>
   </aside>
 </main>
-<footer><span data-t="footer"></span> <a href="https://github.com/FraEgg/Switchless-Multi-Speeder-Commodore-C128DCR-1571" target="_blank" rel="noopener">github.com/FraEgg/Switchless-Multi-Speeder-Commodore-C128DCR-1571</a></footer>
+<footer><span data-t="footer"></span> <a id="repolink" href="#" target="_blank" rel="noopener"></a></footer>
 <div id="toast"></div>
 
 <script>
@@ -199,7 +199,19 @@ const SLOTS = {
     { id: 'K8',    off: 0xA000, len: 0x2000, de: 'C64-Kernal (8 KB)', en: 'C64 kernal (8 KB)' },
     { id: 'K128',  off: 0xC000, len: 0x4000, de: 'C128-Kernal (16 KB)', en: 'C128 kernal (16 KB)' },
   ],
+  // drive EPROM of the 1541 Multi-Speeder: every bank maps the address space of the 1541
+  d41: [
+    { id: 'S64', off: 0x0000, len: 0x10000, de: 'Ganze Bank (64 KB)', en: 'Whole bank (64 KB)' },
+    { id: 'S32', off: 0x8000, len: 0x8000, de: 'ROM $8000–$FFFF (32 KB)', en: 'ROM $8000–$FFFF (32 KB)' },
+    { id: 'S16', off: 0xC000, len: 0x4000, de: 'DOS-ROM $C000–$FFFF (16 KB)', en: 'DOS ROM $C000–$FFFF (16 KB)' },
+    { id: 'S8L', off: 0xC000, len: 0x2000, de: 'Unteres DOS-ROM $C000 (8 KB)', en: 'Lower DOS ROM $C000 (8 KB)' },
+    { id: 'S8H', off: 0xE000, len: 0x2000, de: 'Oberes DOS-ROM $E000 (8 KB)', en: 'Upper DOS ROM $E000 (8 KB)' },
+  ],
 };
+SLOTS.d71 = SLOTS.u3;              // drive EPROM of the external 1571: same layout as in the C128DCR
+// Boards and their EPROMs; file name of an image built without a template
+const BOARDS = { '1541': ['d41'], '1571': ['d71'], 'c128dcr': ['u3', 'u32'] };
+const OUTNAME = { d41: 'C1541_29F040.BIN', d71: 'C1571_29F040.BIN', u3: 'C1571_C128DCR_29F040.BIN', u32: 'C128DCR_KERNAL_29F040.BIN' };
 function slotDef(target, id) { return SLOTS[target].find(s => s.id === id); }
 function overlaps(a, b) { return a.off < b.off + b.len && b.off < a.off + a.len; }
 
@@ -212,17 +224,60 @@ const KNOWN = {
   'a1a1bf9e5ba2ea91dc35b807fc56e8ca': { de: 'C1571DolphinDos26 (ältere Fassung)', en: 'C1571DolphinDos26 (older version)', fam: 'dd26' },
   'f593f5efcb714819b22db6ca6536a97d': { de: 'C1571DolphinDos26 (ältere Fassung)', en: 'C1571DolphinDos26 (older version)', fam: 'dd26' },
   'eb1d93539eeb094e835dfcab35f0a100': { de: 'C1571DolphinDos26 (ältere Fassung ohne ROM-Prüfsumme)', en: 'C1571DolphinDos26 (older version without ROM checksum)', fam: 'dd26' },
+  // 1541 (need: 'pia' = runs only in banks 5 to 8 of the 1541 Multi-Speeder, where the decoder maps the PIA)
+  'a0ce8439d1b8dcf2e1430461f7233a72': { de: 'CBM DOS 2.6 1541 (325302-01 + 901229-05)', en: 'CBM DOS 2.6 1541 (325302-01 + 901229-05)', fam: 'cbm' },
+  '41f5af978d69fc20f1f2fcad7c2ad8cf': { de: 'CBM DOS 1541, unteres ROM (325302-01)', en: 'CBM DOS 1541, lower ROM (325302-01)', fam: 'cbm' },
+  'ea93aaa7016a673aac2294cbb08a9885': { de: 'CBM DOS 1541, oberes ROM (901229-05)', en: 'CBM DOS 1541, upper ROM (901229-05)', fam: 'cbm' },
+  'd55c5a1a5bd78874037dcb01de11d162': { de: 'DolphinDOS 2.0 für die 1541 (Original)', en: 'DolphinDOS 2.0 for the 1541 (original)', fam: 'dd2' },
+  '4b8a5b025c001c8cfa8c515fbe7196e2': { de: 'DolphinDos26 (1541)', en: 'DolphinDos26 (1541)', fam: 'dd26', need: 'pia' },
+  '7d2992aa2935c807a023e9474fd6df6f': { de: 'DolphinDos26 (1541, ältere Fassung)', en: 'DolphinDos26 (1541, older version)', fam: 'dd26', need: 'pia' },
+  '250f525ff66dd8baeff75f2d7844a09b': { de: 'DolphinDos26 (1541, ältere Fassung)', en: 'DolphinDos26 (1541, older version)', fam: 'dd26', need: 'pia' },
+  'e9be35823d67c7987845b8488f003943': { de: 'DolphinDos26DD2 (1541)', en: 'DolphinDos26DD2 (1541)', fam: 'dd26', need: 'pia' },
+  '337b632504ad7ad5131f2e745e3073a8': { de: 'DolphinDos26DD2 (1541, ältere Fassung)', en: 'DolphinDos26DD2 (1541, older version)', fam: 'dd26', need: 'pia' },
+  '5fde8871864d3c36bc46662a5f3f90e2': { de: 'C1541IISpeedDOS26 (16 KB)', en: 'C1541IISpeedDOS26 (16 KB)', fam: 'sd26' },
+  '3731d96ecb859a660b09622f167b6bc6': { de: 'C1541SpeedDOS26 (oberes ROM, 8 KB)', en: 'C1541SpeedDOS26 (upper ROM, 8 KB)', fam: 'sd26' },
+  // external 1571
+  '265bbd9ed1f8e0a53ac78944937bd637': { de: 'C1571SpeedDOS26', en: 'C1571SpeedDOS26', fam: 'sd26' },
+  'c47929f3099e3dd628ef8dc11dd9f6c0': { de: 'C1571SpeedDOS26 (ältere Fassung)', en: 'C1571SpeedDOS26 (older version)', fam: 'sd26' },
+  'a300cb803bc69781c236173a1d908356': { de: 'C1571SpeedDOS26 (ältere Fassung)', en: 'C1571SpeedDOS26 (older version)', fam: 'sd26' },
   '57af4ae21d4b705c2991d98ed5c1f7b8': { de: 'C64-BASIC V2 (901226-01)', en: 'C64 BASIC V2 (901226-01)', fam: 'any' },
   '39065497630802346bce17963f13c092': { de: 'C64-Kernal (901227-03)', en: 'C64 kernal (901227-03)', fam: 'cbm' },
   'fc8fb5ec89b34ae41c8dc20907447e06': { de: 'DolphinDOS-3.0-C64-Kernal', en: 'DolphinDOS 3.0 C64 kernal', fam: 'dd3' },
   '01f6903033b90cd506cde7802ec743c3': { de: 'C128-Kernal (318020-05)', en: 'C128 kernal (318020-05)', fam: 'cbm' },
   '9837409b6bdb7ce055409fa3eb3e9cf0': { de: 'C128-Kernal deutsch (315078-03)', en: 'C128 kernal German (315078-03)', fam: 'cbm' },
   '854901919a2446bccf68e8392325c021': { de: 'Dolphin-C128-Kernal (Original)', en: 'Dolphin C128 kernal (original)', fam: 'dd3' },
-  '54fa1120daf6baafe39c31495a22f448': { de: 'C64IIDolphinDos26', en: 'C64IIDolphinDos26', fam: 'dd26', jdok: true },
-  '859493314e98777a595d0f2a039e6800': { de: 'C128DolphinDos26-US', en: 'C128DolphinDos26-US', fam: 'dd26', jdok: true },
-  '20aea19be1369bceddc0d6dccb7d373f': { de: 'C128DolphinDos26-DE (DIN)', en: 'C128DolphinDos26-DE (DIN)', fam: 'dd26', jdok: true },
+  '79d63d9378c70151aa6b3d217a69e883': { de: 'C64IIDolphinDos26', en: 'C64IIDolphinDos26', fam: 'dd26', jdok: true },
+  '3af69fc41f924db6a4ed568b8841d166': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
+  '54fa1120daf6baafe39c31495a22f448': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
+  '32278fdfed4928d395941d4f6d0a93be': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
+  'e0a1600c63ace1da02f9efba964ab291': { de: 'C128DolphinDos26-US', en: 'C128DolphinDos26-US', fam: 'dd26', jdok: true },
+  '859493314e98777a595d0f2a039e6800': { de: 'C128DolphinDos26-US (ältere Fassung)', en: 'C128DolphinDos26-US (older version)', fam: 'dd26', jdok: true },
+  '77089a7e6fac9e23b013f499bba50597': { de: 'C128DolphinDos26-DE (DIN)', en: 'C128DolphinDos26-DE (DIN)', fam: 'dd26', jdok: true },
+  '20aea19be1369bceddc0d6dccb7d373f': { de: 'C128DolphinDos26-DE (DIN) (ältere Fassung)', en: 'C128DolphinDos26-DE (DIN) (older version)', fam: 'dd26', jdok: true },
+  '5a21ec117f0393083159fb575ee38118': { de: 'C1571CRSpeedDOS26', en: 'C1571CRSpeedDOS26', fam: 'sd26' },
+  'acb189cc23085d98e61cf103b7d548eb': { de: 'C64IISpeedDos26', en: 'C64IISpeedDos26', fam: 'sd26', jdok: true },
+  'dd1000823c4c90885fc2e14705aaf04c': { de: 'C64IISpeedDos26 (ältere Fassung)', en: 'C64IISpeedDos26 (older version)', fam: 'sd26', jdok: true },
+  'ddbcef24ff23c427cb586a6d5388cab8': { de: 'C64IISpeedDos26 (ältere Fassung)', en: 'C64IISpeedDos26 (older version)', fam: 'sd26', jdok: true },
+  'f8a530c4099d7996d184750fd08ae4b7': { de: 'C128SpeedDos26-EN', en: 'C128SpeedDos26-EN', fam: 'sd26', jdok: true },
+  '5a6383d56170885c43da2da7ce9ab006': { de: 'C128SpeedDos26-EN (ältere Fassung)', en: 'C128SpeedDos26-EN (older version)', fam: 'sd26', jdok: true },
+  '645d26d178f53b05914c22d46f812397': { de: 'C128SpeedDos26-EN (ältere Fassung)', en: 'C128SpeedDos26-EN (older version)', fam: 'sd26', jdok: true },
+  '8c762b698a093937d85322a9207e7221': { de: 'C128SpeedDos26-DE (DIN)', en: 'C128SpeedDos26-DE (DIN)', fam: 'sd26', jdok: true },
+  'ccc3625ab6770d7140e82a440689b34b': { de: 'C128SpeedDos26-DE (DIN) (ältere Fassung)', en: 'C128SpeedDos26-DE (DIN) (older version)', fam: 'sd26', jdok: true },
+  '8cdbcdea7eac9c0a7f088ddf9c728245': { de: 'C128SpeedDos26-DE (DIN) (ältere Fassung)', en: 'C128SpeedDos26-DE (DIN) (older version)', fam: 'sd26', jdok: true },
 };
 const TEMPLATE_MD5 = {
+  '38cb007b121e3f2316c00958757e07fa': 'C1541_29F040.BIN',
+  '8d06a682a47c2402fff6422092f2742a': 'C1541_29F040.BIN (SpeedDos26)',
+  '5c58239c28425845a8160742f567ad0b': 'C1571_29F040.BIN',
+  'c256b65ddb72f610117e9a802460a51e': 'C1571_29F040.BIN',
+  'a4d7014fcf230a757e31d140ab116485': 'C1571_C128DCR_29F040.BIN',
+  '38ee5116948f57ab453f667a1b50e0d9': 'C1571_C128DCR_29F040.BIN',
+  '560a64c8c1c29b963ee735c7c11a5dd0': 'C128DCR_KERNAL_29F040-DE.BIN',
+  '914477e730dc84d36338e219110791fc': 'C128DCR_KERNAL_29F040-DE.BIN',
+  'd9714107b8488c29ce9706deb5db8679': 'C128DCR_KERNAL_29F040-DE.BIN',
+  '1e29060185df536a863707cfe6f892d1': 'C128DCR_KERNAL_29F040-US.BIN',
+  '500bab61ffeb24e2f63ec03eaabd6c4f': 'C128DCR_KERNAL_29F040-US.BIN',
+  'd5437431cd9f261284b04c3dfe47a8ba': 'C128DCR_KERNAL_29F040-US.BIN',
   'bba2f64edaf2e15af82057bc07ab5014': 'C1571_C128DCR_29F040.BIN',
   '88a123d4492b9bbc30ce092deca02d79': 'C1571_C128DCR_29F040.BIN',
   'dc66eaa7f83b4b31dca49e7fbdfd2998': 'C1571_C128DCR_29F040.BIN',
@@ -244,16 +299,40 @@ function u32Template(variant) {
   const dd3 = [['B8', 'basic64-901226-01.bin', '57af4ae21d4b705c2991d98ed5c1f7b8'],
                ['K8', 'kernal64-dolphindos3.bin', 'fc8fb5ec89b34ae41c8dc20907447e06'],
                ['K128', 'kernal-dolphin128.rom', '854901919a2446bccf68e8392325c021']];
-  const dd26 = [['C64II', 'C64IIDolphinDos26.bin', '54fa1120daf6baafe39c31495a22f448'],
-                de ? ['K128', 'C128DolphinDos26-DE.BIN', '20aea19be1369bceddc0d6dccb7d373f']
-                   : ['K128', 'C128DolphinDos26-US.BIN', '859493314e98777a595d0f2a039e6800']];
-  return { name: 'C128DCR_KERNAL_29F040-' + variant + '.BIN', banks: [cbm, cbm, dd3, dd26, cbm, cbm, cbm, cbm] };
+  const dd26 = [['C64II', 'C64IIDolphinDos26.bin', '79d63d9378c70151aa6b3d217a69e883'],
+                de ? ['K128', 'C128DolphinDos26-DE.BIN', '77089a7e6fac9e23b013f499bba50597']
+                   : ['K128', 'C128DolphinDos26-US.BIN', 'e0a1600c63ace1da02f9efba964ab291']];
+  // SpeedDos26: bank 5 with the US keyboard, bank 6 with the German keyboard (both variants)
+  const sd26 = k => [['C64II', 'C64IISpeedDos26.bin', 'acb189cc23085d98e61cf103b7d548eb'], k];
+  const sdEN = sd26(['K128', 'C128SpeedDos26-EN.bin', 'f8a530c4099d7996d184750fd08ae4b7']);
+  const sdDE = sd26(['K128', 'C128SpeedDos26-DE.bin', '8c762b698a093937d85322a9207e7221']);
+  return { name: 'C128DCR_KERNAL_29F040-' + variant + '.BIN', banks: [cbm, cbm, dd3, dd26, sdEN, sdDE, cbm, cbm] };
 }
 function u3Template() {
   const cbm = [['S32', 'dos1571cr-318047-01.bin', 'f9158328494b3e269f86ef419792c2e5']];
+  const sd26 = [['S32', 'C1571CRSpeedDOS26.bin', '5a21ec117f0393083159fb575ee38118']];
   return { name: 'C1571_C128DCR_29F040.BIN', banks: [cbm, cbm,
     [['S32', '1571-DolphinDos3.ROM.BIN', 'e39a154877cc3a1a893688bc8cabccf2']],
-    [['S64', 'C1571_DOLPHINDOS26.bin', '947041a25c15acaa979fa87181f07ab1']], cbm, cbm, cbm, cbm] };
+    [['S64', 'C1571_DOLPHINDOS26.bin', '947041a25c15acaa979fa87181f07ab1']], sd26, sd26, cbm, cbm] };
+}
+
+// 1541 Multi-Speeder: variant 'STD' = template of the hardware project, 'SD26' = with SpeedDos26 in bank 3
+function d41Template(variant) {
+  const cbm = [['S16', 'dos1541-325302-01+901229-05.bin', 'a0ce8439d1b8dcf2e1430461f7233a72']];
+  const sd26 = [['S16', 'C1541IISpeedDOS26.bin', '5fde8871864d3c36bc46662a5f3f90e2']];
+  return { name: 'C1541_29F040.BIN', banks: [cbm,
+    [['S32', 'DolphinDos2-6000.bin', 'd55c5a1a5bd78874037dcb01de11d162']],
+    variant === 'SD26' ? sd26 : cbm, cbm, cbm, cbm,
+    [['S64', 'C1541_DOLPHINDOS26DD2.bin', 'e9be35823d67c7987845b8488f003943']],
+    [['S64', '1541DolphinDos26.bin', '4b8a5b025c001c8cfa8c515fbe7196e2']]] };
+}
+// external 1571
+function d71Template() {
+  const cbm = [['S32', 'dos1571-310654-05.bin', 'dae964d64b7843ff86c008d396dda208']];
+  const sd26 = [['S32', 'C1571SpeedDOS26.bin', '265bbd9ed1f8e0a53ac78944937bd637']];
+  return { name: 'C1571_29F040.BIN', banks: [cbm, cbm,
+    [['S32', '1571-DolphinDos3.ROM.BIN', 'e39a154877cc3a1a893688bc8cabccf2']],
+    [['S64', 'C1571_DOLPHINDOS26.bin', '947041a25c15acaa979fa87181f07ab1']], sd26, sd26, cbm, cbm] };
 }
 
 // State of one EPROM: banks[0..7] = { mode: 'own'|'copy'|'empty', copyOf, slots: {id: {file, expect}} }
@@ -265,7 +344,7 @@ function newState(target, template) {
     if (template) for (const [id, name, m] of template.banks[b]) slots[id].expect = { name, md5: m };
     banks.push({ mode: 'own', copyOf: 0, slots });
   }
-  return { target, banks, outName: template ? template.name : (target === 'u3' ? 'C1571_C128DCR_29F040.BIN' : 'C128DCR_KERNAL_29F040.BIN') };
+  return { target, banks, outName: template ? template.name : OUTNAME[target] };
 }
 function makeFile(name, data) {
   const m = md5(data);
@@ -344,7 +423,17 @@ function splitImage(state, img, baseName) {
       return makeFile(KNOWN[m] ? (bank.slots && Object.values(bank.slots).map(x => x.expect).find(e => e && e.md5 === m) || { name: label }).name : label, d);
     };
     if (allFF(img, base, base + BANK)) { bank.mode = 'empty'; continue; }
-    if (state.target === 'u3') {
+    if (state.target === 'd41') {
+      const n = baseName + '_bank' + (b + 1);
+      if (!allFF(img, base, base + 0x8000)) placeFile(state, b, 'S64', fileOf(0, BANK, n + '.bin'));
+      else if (!allFF(img, base + 0x8000, base + 0xC000)) placeFile(state, b, 'S32', fileOf(0x8000, 0x8000, n + '_rom32.bin'));
+      else if (KNOWN[md5(part(0xC000, 0x4000))] || !(KNOWN[md5(part(0xC000, 0x2000))] && KNOWN[md5(part(0xE000, 0x2000))]))
+        placeFile(state, b, 'S16', fileOf(0xC000, 0x4000, n + '_dos16.bin'));
+      else {                       // two known 8 KB ROMs that do not form a known 16 KB ROM
+        placeFile(state, b, 'S8L', fileOf(0xC000, 0x2000, n + '_dos8lo.bin'));
+        placeFile(state, b, 'S8H', fileOf(0xE000, 0x2000, n + '_dos8hi.bin'));
+      }
+    } else if (state.target === 'u3' || state.target === 'd71') {
       if (allFF(img, base, base + 0x8000)) placeFile(state, b, 'S32', fileOf(0x8000, 0x8000, baseName + '_bank' + (b + 1) + '_dos32.bin'));
       else placeFile(state, b, 'S64', fileOf(0, BANK, baseName + '_bank' + (b + 1) + '.bin'));
     } else {
@@ -377,6 +466,9 @@ function checkState(state, other) {
         any = true;
         if (sl.expect && sl.expect.md5 !== sl.file.md5) msgs.push({ lvl: 'warn', key: 'm_differs', args: [n, sl.file.name] });
         if (!sl.file.known) msgs.push({ lvl: 'info', key: 'm_unknown', args: [n, sl.file.name] });
+        if (state.target === 'd41' && b < 4 && sl.file.known && sl.file.known.need === 'pia') msgs.push({ lvl: 'warn', key: 'm_pia', args: [n, sl.file.name] });
+        if ((state.target === 'd41' || state.target === 'd71') && sl.file.known && (sl.file.known.fam === 'dd26' || sl.file.known.fam === 'sd26'))
+          msgs.push({ lvl: 'info', key: 'm_kernal_' + sl.file.known.fam, args: [n] });
         if (sl.file.jiffy) msgs.push({ lvl: sl.file.known && sl.file.known.jdok ? 'info' : 'warn', key: sl.file.known && sl.file.known.jdok ? 'm_jd_dd26' : 'm_jiffy', args: [n, sl.file.name] });
       } else if (sl.expect && slotActive(state, b, id)) (missing[sl.expect.name] = missing[sl.expect.name] || []).push(n);
     }
@@ -387,25 +479,27 @@ function checkState(state, other) {
   for (const name in missing) msgs.unshift({ lvl: 'err', key: 'm_missing', args: [bankList(missing[name]), name] });
   if (other) {                      // bank b of the drive and of the kernal switcher should belong together
     const fam = (st, b) => { const f = Object.values(st.banks[b].slots).map(s => s.file).filter(Boolean);
-      return f.some(x => x.known && x.known.fam === 'dd26') ? 'dd26' : f.some(x => x.known && x.known.fam === 'dd3') ? 'dd3' : null; };
+      return ['dd26', 'sd26', 'dd3'].find(k => f.some(x => x.known && x.known.fam === k)) || null; };
+    const own = x => x === 'dd26' || x === 'sd26' ? x : null;   // these need their own kernal on the other side
     for (let b = 0; b < 8; b++) {
       const a = fam(state, b), o = fam(other, b);
-      if ((a === 'dd26') !== (o === 'dd26') && (a || o)) msgs.push({ lvl: 'warn', key: 'm_pair', args: [b + 1] });
+      if (own(a) !== own(o)) msgs.push({ lvl: 'warn', key: 'm_pair', args: [b + 1] });
     }
   }
   if (!msgs.some(m => m.lvl === 'err' || m.lvl === 'warn')) msgs.unshift({ lvl: 'ok', key: 'm_allok', args: [] });
   return { msgs, img, md5: md5(img) };
 }
-const VERSION = '1.3';
+const VERSION = '2.1';
 function projectOf(states, extra) {
   const t = {};
   for (const k in states) t[k] = { outName: states[k].outName, banks: states[k].banks.map(b => ({ mode: b.mode, copyOf: b.copyOf,
     slots: Object.fromEntries(Object.entries(b.slots).filter(([, s]) => s.file || s.expect).map(([id, s]) => [id,
       s.file ? { name: s.file.name, md5: s.file.md5 } : { name: s.expect.name, md5: s.expect.md5, missing: true }])) })) };
-  return Object.assign({ tool: 'MS-ROM-Builder-C128DCR', version: VERSION, targets: t }, extra || {});
+  return Object.assign({ tool: 'MS-ROM-Builder', version: VERSION, targets: t }, extra || {});
 }
 function stateFromProject(target, obj) {   // expectations from the project; files are assigned again by MD5
   const st = newState(target, null), src = obj.targets[target];
+  if (!src || !Array.isArray(src.banks)) return null;      // (older project files only know U3 and U32)
   st.outName = src.outName || st.outName;
   src.banks.slice(0, 8).forEach((b, i) => {
     const bank = st.banks[i];
@@ -414,7 +508,7 @@ function stateFromProject(target, obj) {   // expectations from the project; fil
   });
   return st;
 }
-if (typeof module !== 'undefined') module.exports = { VERSION, projectOf, stateFromProject, md5, SLOTS, KNOWN, TEMPLATE_MD5, u3Template, u32Template, newState, makeFile,
+if (typeof module !== 'undefined') module.exports = { VERSION, projectOf, stateFromProject, md5, SLOTS, BOARDS, OUTNAME, KNOWN, TEMPLATE_MD5, u3Template, u32Template, d41Template, d71Template, newState, makeFile,
   placeFile, autoAssign, buildImage, splitImage, checkState, bankList, IMAGE, BANK };
 // CORE-END -----------------------------------------------------------------
 </script>
@@ -422,13 +516,19 @@ if (typeof module !== 'undefined') module.exports = { VERSION, projectOf, stateF
 <script>
 const T = {
   de: {
-    subtitle: 'ROMs für den 1571 Switchless Multi-Speeder V3 im C128DCR selbst zusammenstellen – Laufwerk (U3) und Kernal-Switcher (U32)',
-    tab_u3: 'Laufwerk (U3)', tab_u32: 'Kernal-Switcher (U32)', preset: 'Vorlage:', assign: 'Dateien zuordnen …', open_image: 'Image öffnen …', reset: 'Zurücksetzen',
+    sub_1541: 'EPROM für den 1541 Switchless Multi-Speeder V3 selbst zusammenstellen (1541, 1541-II)',
+    sub_1571: 'EPROM für den 1571 Switchless Multi-Speeder V3 in der externen 1571 selbst zusammenstellen',
+    sub_c128dcr: 'ROMs für den 1571 Switchless Multi-Speeder V3 im C128DCR selbst zusammenstellen – Laufwerk (U3) und Kernal-Switcher (U32)',
+    tab_d41: 'Laufwerk 1541 (U3)', tab_d71: 'Laufwerk 1571 (U3)', tab_u3: 'Laufwerk (U3)', tab_u32: 'Kernal-Switcher (U32)',
+    p_tpl_d41: 'C1541_29F040 (Standard)', p_tpl_d41sd: 'C1541_29F040 mit SpeedDos26 in Bank 3', p_tpl_d71: 'C1571_29F040 (Standard)',
+    m_pia: 'Bank {0}: {1} braucht den PIA und läuft nur in Bank 5 bis 8.',
+    m_kernal_dd26: 'Bank {0}: im Rechner dazu den Kernal C64DolphinDos26 bzw. C128DolphinDos26 verwenden.',
+    m_kernal_sd26: 'Bank {0}: im Rechner dazu den Kernal C64SpeedDos26 bzw. C128SpeedDos26 verwenden.', preset: 'Vorlage:', assign: 'Dateien zuordnen …', open_image: 'Image öffnen …', reset: 'Zurücksetzen',
     drop: 'ROM-Dateien hierher ziehen: Sie werden über ihre Prüfsumme den Steckplätzen der Vorlage zugeordnet. Einzelne Dateien lassen sich auch direkt auf einen Steckplatz ziehen.',
     eprom: 'EPROM-Typ', check: 'Prüfung', result: 'Ergebnis', filename: 'Datei', size: 'Größe', template_md5: 'Vorlage', download: 'BIN herunterladen', save_project: 'Projekt speichern', load_project: 'Projekt laden …', project_saved: 'Projekt gespeichert (nur Belegung, Dateinamen und Prüfsummen – keine ROM-Daten).',
     project_loaded: 'Projekt geladen. Jetzt die ROM-Dateien hineinziehen; sie werden über die Prüfsumme zugeordnet.', project_bad: 'Das ist keine Projektdatei des MS-ROM-Builders.',
     privacy: 'Alle Dateien werden nur in diesem Browser verarbeitet und nirgendwohin übertragen. Das Tool enthält selbst keine ROMs.',
-    footer: 'MS-ROM-Builder-C128DCR – Multi-Speeder und DolphinDos26: Frank Eggen. Projekt und Handbuch:',
+    footer: 'MS-ROM-Builder – Multi-Speeder, DolphinDos26 und SpeedDos26: Frank Eggen. Projekt und Handbuch:',
     p_tpl_u3: 'C1571_C128DCR_29F040 (Standard)', p_tpl_de: 'C128DCR_KERNAL_29F040-DE (deutsch)', p_tpl_us: 'C128DCR_KERNAL_29F040-US (international/USA)', p_empty: 'Leer',
     bank: 'Bank', own: 'eigene Dateien', copy: 'wie Bank', empty: 'leer ($FF)', content: 'Inhalt:',
     pick: 'Datei …', remove: 'entfernen', more: 'Weitere Steckplätze:', pending_seg: 'ausstehend', free: 'frei', expected: 'erwartet', missing: 'fehlt', match: 'passt zur Vorlage', differs: 'weicht von der Vorlage ab', unknown: 'unbekannt',
@@ -438,17 +538,23 @@ const T = {
     m_allok: 'Alles in Ordnung.', m_empty: 'Bank {0} ist leer ($FF) – ein Wechsel dorthin führt ins Leere.', m_copy: 'Bank {0} ist eine Kopie von Bank {1}.',
     m_differs: 'Bank {0}: {1} weicht von der Vorlage ab.', m_unknown: 'Bank {0}: {1} ist kein bekanntes ROM.', m_missing: '{1} fehlt noch (Bank {0}).',
     m_nofile: 'Bank {0} enthält keine Datei.', m_vectors: 'Bank {0}: keine Reset-Vektoren bei $FFFA–$FFFF.',
-    m_jiffy: 'Bank {0}: {1} enthält JiffyDOS – bitte die Lizenz prüfen (jiffydos.com).', m_jd_dd26: 'Bank {0}: {1} enthält die JiffyDOS-Übertragungsroutinen von DolphinDos26 (Lizenzhinweis beachten).',
-    m_pair: 'Bank {0}: Laufwerk und Kernal-Switcher passen nicht zusammen (DolphinDos26 nur auf einer Seite).', tpl_yes: 'identisch mit {0}', tpl_no: '–',
+    m_jiffy: 'Bank {0}: {1} enthält JiffyDOS – bitte die Lizenz prüfen (jiffydos.com).', m_jd_dd26: 'Bank {0}: {1} enthält die JiffyDOS-Übertragungsroutinen von DolphinDos26/SpeedDos26 (Lizenzhinweis beachten).',
+    m_pair: 'Bank {0}: Laufwerk und Kernal-Switcher passen nicht zusammen (DolphinDos26 oder SpeedDos26 nur auf einer Seite oder gemischt).', tpl_yes: 'identisch mit {0}', tpl_no: '–',
   },
   en: {
-    subtitle: 'Assemble the ROMs for the 1571 Switchless Multi-Speeder V3 in the C128DCR yourself – drive (U3) and kernal switcher (U32)',
-    tab_u3: 'Drive (U3)', tab_u32: 'Kernal switcher (U32)', preset: 'Template:', assign: 'Assign files …', open_image: 'Open image …', reset: 'Reset',
+    sub_1541: 'Assemble the EPROM for the 1541 Switchless Multi-Speeder V3 yourself (1541, 1541-II)',
+    sub_1571: 'Assemble the EPROM for the 1571 Switchless Multi-Speeder V3 in the external 1571 yourself',
+    sub_c128dcr: 'Assemble the ROMs for the 1571 Switchless Multi-Speeder V3 in the C128DCR yourself – drive (U3) and kernal switcher (U32)',
+    tab_d41: '1541 drive (U3)', tab_d71: '1571 drive (U3)', tab_u3: 'Drive (U3)', tab_u32: 'Kernal switcher (U32)',
+    p_tpl_d41: 'C1541_29F040 (default)', p_tpl_d41sd: 'C1541_29F040 with SpeedDos26 in bank 3', p_tpl_d71: 'C1571_29F040 (default)',
+    m_pia: 'Bank {0}: {1} needs the PIA and runs only in banks 5 to 8.',
+    m_kernal_dd26: 'Bank {0}: use the kernal C64DolphinDos26 or C128DolphinDos26 in the computer with it.',
+    m_kernal_sd26: 'Bank {0}: use the kernal C64SpeedDos26 or C128SpeedDos26 in the computer with it.', preset: 'Template:', assign: 'Assign files …', open_image: 'Open image …', reset: 'Reset',
     drop: 'Drop ROM files here: they are assigned to the template slots by their checksum. Single files can also be dropped directly onto a slot.',
     eprom: 'EPROM type', check: 'Check', result: 'Result', filename: 'File', size: 'Size', template_md5: 'Template', download: 'Download BIN', save_project: 'Save project', load_project: 'Load project …', project_saved: 'Project saved (layout, file names and checksums only – no ROM data).',
     project_loaded: 'Project loaded. Now drop the ROM files; they are assigned by their checksum.', project_bad: 'This is not a project file of the MS-ROM-Builder.',
     privacy: 'All files are processed only in this browser and are not sent anywhere. The tool itself contains no ROMs.',
-    footer: 'MS-ROM-Builder-C128DCR – Multi-Speeder and DolphinDos26: Frank Eggen. Project and manual:',
+    footer: 'MS-ROM-Builder – Multi-Speeder, DolphinDos26 and SpeedDos26: Frank Eggen. Project and manual:',
     p_tpl_u3: 'C1571_C128DCR_29F040 (default)', p_tpl_de: 'C128DCR_KERNAL_29F040-DE (German)', p_tpl_us: 'C128DCR_KERNAL_29F040-US (international/USA)', p_empty: 'Empty',
     bank: 'Bank', own: 'own files', copy: 'same as bank', empty: 'empty ($FF)', content: 'Content:',
     pick: 'File …', remove: 'remove', more: 'More slots:', pending_seg: 'pending', free: 'free', expected: 'expected', missing: 'missing', match: 'matches the template', differs: 'differs from the template', unknown: 'unknown',
@@ -458,14 +564,18 @@ const T = {
     m_allok: 'Everything is fine.', m_empty: 'Bank {0} is empty ($FF) – switching there leads nowhere.', m_copy: 'Bank {0} is a copy of bank {1}.',
     m_differs: 'Bank {0}: {1} differs from the template.', m_unknown: 'Bank {0}: {1} is not a known ROM.', m_missing: '{1} is still missing (bank {0}).',
     m_nofile: 'Bank {0} contains no file.', m_vectors: 'Bank {0}: no reset vectors at $FFFA–$FFFF.',
-    m_jiffy: 'Bank {0}: {1} contains JiffyDOS – please check the licence (jiffydos.com).', m_jd_dd26: 'Bank {0}: {1} contains the JiffyDOS transfer routines of DolphinDos26 (see the licence note).',
-    m_pair: 'Bank {0}: drive and kernal switcher do not match (DolphinDos26 on one side only).', tpl_yes: 'identical to {0}', tpl_no: '–',
+    m_jiffy: 'Bank {0}: {1} contains JiffyDOS – please check the licence (jiffydos.com).', m_jd_dd26: 'Bank {0}: {1} contains the JiffyDOS transfer routines of DolphinDos26/SpeedDos26 (see the licence note).',
+    m_pair: 'Bank {0}: drive and kernal switcher do not match (DolphinDos26 or SpeedDos26 on one side only, or mixed).', tpl_yes: 'identical to {0}', tpl_no: '–',
   },
 };
 const COLORS = ['--seg1', '--seg2', '--seg3', '--seg4', '--seg5'];
-let lang = 'de', target = 'u3', variant = 'DE';
-const states = { u3: newState('u3', u3Template()), u32: newState('u32', u32Template('DE')) };
-let presetKey = { u3: 'tpl', u32: 'tpl' };
+let lang = 'de', board = '1541', target = 'd41', variant = 'DE', variant41 = 'STD';
+const states = { d41: newState('d41', d41Template('STD')), d71: newState('d71', d71Template()),
+                 u3: newState('u3', u3Template()), u32: newState('u32', u32Template('DE')) };
+let presetKey = { d41: 'tpl', d71: 'tpl', u3: 'tpl', u32: 'tpl' };
+const REPO = { '1541': 'Switchless-Multi-Speeder-Commodore-1541', '1571': 'Switchless-Multi-Speeder-Commodore-1571',
+               'c128dcr': 'Switchless-Multi-Speeder-Commodore-C128DCR-1571' };
+function setBoard(b) { if (!BOARDS[b]) return; board = b; if (!BOARDS[b].includes(target)) target = BOARDS[b][0]; }
 const $ = id => document.getElementById(id);
 const tr = (k, ...a) => (T[lang][k] || k).replace(/\{(\d)\}/g, (_, i) => a[i]);
 const hx = (n, w) => '$' + n.toString(16).toUpperCase().padStart(w, '0');
@@ -477,12 +587,22 @@ function renderStatic() {
   $('ver').textContent = 'V' + VERSION;
   document.querySelectorAll('[data-t]').forEach(el => { el.textContent = tr(el.dataset.t); });
   document.querySelectorAll('#lang button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.target === target));
-  const p = $('preset');
-  p.innerHTML = target === 'u3'
-    ? `<option value="tpl">${tr('p_tpl_u3')}</option><option value="empty">${tr('p_empty')}</option>`
-    : `<option value="DE">${tr('p_tpl_de')}</option><option value="US">${tr('p_tpl_us')}</option><option value="empty">${tr('p_empty')}</option>`;
-  p.value = target === 'u3' ? presetKey.u3 : (presetKey.u32 === 'empty' ? 'empty' : variant);
+  $('subtitle').textContent = tr('sub_' + board);
+  document.title = 'MS-ROM-Builder – ' + (board === 'c128dcr' ? 'C128DCR' : board);
+  document.querySelectorAll('#board button').forEach(b => b.classList.toggle('on', b.dataset.board === board));
+  $('tabs').innerHTML = BOARDS[board].map(t => `<button data-target="${t}"${t === target ? ' class="on"' : ''}>${tr('tab_' + t)}</button>`).join('');
+  const link = $('repolink'); link.href = 'https://github.com/FraEgg/' + REPO[board]; link.textContent = 'github.com/FraEgg/' + REPO[board];
+  const p = $('preset'), leer = `<option value="empty">${tr('p_empty')}</option>`;
+  if (target === 'u32') {
+    p.innerHTML = `<option value="DE">${tr('p_tpl_de')}</option><option value="US">${tr('p_tpl_us')}</option>` + leer;
+    p.value = presetKey.u32 === 'empty' ? 'empty' : variant;
+  } else if (target === 'd41') {
+    p.innerHTML = `<option value="STD">${tr('p_tpl_d41')}</option><option value="SD26">${tr('p_tpl_d41sd')}</option>` + leer;
+    p.value = presetKey.d41 === 'empty' ? 'empty' : variant41;
+  } else {
+    p.innerHTML = `<option value="tpl">${tr('p_tpl_' + target)}</option>` + leer;
+    p.value = presetKey[target];
+  }
   $('j2hint').textContent = T[lang].j2[$('eprom').value];
 }
 
@@ -538,7 +658,7 @@ function render() {
     wrap.appendChild(el);
   });
   // check + result
-  const other = target === 'u3' ? states.u32 : states.u3;
+  const other = board !== 'c128dcr' ? null : target === 'u3' ? states.u32 : states.u3;   // only the C128DCR has two EPROMs
   const res = checkState(st, other);
   $('msgs').innerHTML = res.msgs.map(m => `<li class="${m.lvl}">${tr(m.key, ...m.args)}</li>`).join('');
   $('outName').textContent = st.outName;
@@ -550,12 +670,14 @@ function render() {
 
 // events
 document.querySelectorAll('#lang button').forEach(b => b.onclick = () => { lang = b.dataset.lang; try { localStorage.setItem('msrb-lang', lang); } catch (e) {} render(); });
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { target = b.dataset.target; render(); });
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { target = b.dataset.target; render(); } });
+document.querySelectorAll('#board button').forEach(b => b.onclick = () => { setBoard(b.dataset.board); try { localStorage.setItem('msrb-board', board); } catch (e) {} render(); });
 $('eprom').onchange = render;
 $('preset').onchange = e => {
   const v = e.target.value;
-  if (target === 'u3') { presetKey.u3 = v; states.u3 = newState('u3', v === 'empty' ? null : u3Template()); }
-  else { presetKey.u32 = v === 'empty' ? 'empty' : 'tpl'; if (v !== 'empty') variant = v; states.u32 = newState('u32', v === 'empty' ? null : u32Template(variant)); }
+  if (target === 'u32') { presetKey.u32 = v === 'empty' ? 'empty' : 'tpl'; if (v !== 'empty') variant = v; states.u32 = newState('u32', v === 'empty' ? null : u32Template(variant)); }
+  else if (target === 'd41') { presetKey.d41 = v === 'empty' ? 'empty' : 'tpl'; if (v !== 'empty') variant41 = v; states.d41 = newState('d41', v === 'empty' ? null : d41Template(variant41)); }
+  else { presetKey[target] = v; states[target] = newState(target, v === 'empty' ? null : target === 'u3' ? u3Template() : d71Template()); }
   render();
 };
 $('btnReset').onclick = () => { $('preset').dispatchEvent(new Event('change')); };
@@ -612,10 +734,10 @@ document.addEventListener('drop', async e => {
   else assignMany(files);
 });
 $('btnSave').onclick = () => {
-  const json = JSON.stringify(projectOf(states, { variant, eprom: $('eprom').value }), null, 1);
+  const json = JSON.stringify(projectOf(states, { board, variant, variant41, eprom: $('eprom').value }), null, 1);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  a.download = 'MS-ROM-Builder-C128DCR-Projekt.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  a.download = 'MS-ROM-Builder-Projekt.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   toast(tr('project_saved'));
 };
 $('btnLoad').onclick = () => $('inProject').click();
@@ -623,11 +745,15 @@ $('inProject').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const obj = JSON.parse(await f.text());
-    if (obj.tool !== 'MS-ROM-Builder-C128DCR' || !obj.targets || !obj.targets.u3 || !obj.targets.u32) throw 0;
-    states.u3 = stateFromProject('u3', obj); states.u32 = stateFromProject('u32', obj);
+    if ((obj.tool !== 'MS-ROM-Builder' && obj.tool !== 'MS-ROM-Builder-C128DCR') || !obj.targets) throw 0;
+    let any = false;
+    for (const t in states) { const st = stateFromProject(t, obj); if (st) { states[t] = st; any = true; } }
+    if (!any) throw 0;
     if (obj.variant === 'DE' || obj.variant === 'US') variant = obj.variant;
+    if (obj.variant41 === 'STD' || obj.variant41 === 'SD26') variant41 = obj.variant41;
     if (obj.eprom) $('eprom').value = obj.eprom;
-    presetKey = { u3: 'tpl', u32: 'tpl' }; render(); toast(tr('project_loaded'));
+    setBoard(BOARDS[obj.board] ? obj.board : 'c128dcr');      // (projects of version 1 are C128DCR projects)
+    presetKey = { d41: 'tpl', d71: 'tpl', u3: 'tpl', u32: 'tpl' }; render(); toast(tr('project_loaded'));
   } catch (err) { toast(tr('project_bad')); }
 };
 $('btnDownload').onclick = () => {
@@ -636,6 +762,9 @@ $('btnDownload').onclick = () => {
   a.href = URL.createObjectURL(new Blob([res.img], { type: 'application/octet-stream' }));
   a.download = states[target].outName; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
+// board: from the address (…/MS-ROM-Builder.html#1541, #1571, #c128dcr), else the one used last
+try { setBoard(localStorage.getItem('msrb-board')); } catch (e) {}
+setBoard(location.hash.slice(1).toLowerCase());
 try { const l = localStorage.getItem('msrb-lang'); if (l === 'de' || l === 'en') lang = l; else if (!navigator.language.startsWith('de')) lang = 'en'; } catch (e) {}
 render();
 </script>
