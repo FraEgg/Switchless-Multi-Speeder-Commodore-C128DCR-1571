@@ -246,7 +246,8 @@ const KNOWN = {
   '01f6903033b90cd506cde7802ec743c3': { de: 'C128-Kernal (318020-05)', en: 'C128 kernal (318020-05)', fam: 'cbm' },
   '9837409b6bdb7ce055409fa3eb3e9cf0': { de: 'C128-Kernal deutsch (315078-03)', en: 'C128 kernal German (315078-03)', fam: 'cbm' },
   '854901919a2446bccf68e8392325c021': { de: 'Dolphin-C128-Kernal (Original)', en: 'Dolphin C128 kernal (original)', fam: 'dd3' },
-  '79d63d9378c70151aa6b3d217a69e883': { de: 'C64IIDolphinDos26', en: 'C64IIDolphinDos26', fam: 'dd26', jdok: true },
+  'c6ea6480dfaf4fcf93cf3d4d49afa54e': { de: 'C64IIDolphinDos26', en: 'C64IIDolphinDos26', fam: 'dd26', jdok: true },
+  '79d63d9378c70151aa6b3d217a69e883': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
   '3af69fc41f924db6a4ed568b8841d166': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
   '54fa1120daf6baafe39c31495a22f448': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
   '32278fdfed4928d395941d4f6d0a93be': { de: 'C64IIDolphinDos26 (ältere Fassung)', en: 'C64IIDolphinDos26 (older version)', fam: 'dd26', jdok: true },
@@ -266,6 +267,8 @@ const KNOWN = {
   '8cdbcdea7eac9c0a7f088ddf9c728245': { de: 'C128SpeedDos26-DE (DIN) (ältere Fassung)', en: 'C128SpeedDos26-DE (DIN) (older version)', fam: 'sd26', jdok: true },
 };
 const TEMPLATE_MD5 = {
+  '38eabb27f42403b83229def2080b8a9c': 'C128DCR_KERNAL_29F040-DE.BIN',
+  '7820ccc6b8de4a6f3b8dad44669afcf3': 'C128DCR_KERNAL_29F040-US.BIN',
   '38cb007b121e3f2316c00958757e07fa': 'C1541_29F040.BIN',
   '8d06a682a47c2402fff6422092f2742a': 'C1541_29F040.BIN (SpeedDos26)',
   '5c58239c28425845a8160742f567ad0b': 'C1571_29F040.BIN',
@@ -299,7 +302,7 @@ function u32Template(variant) {
   const dd3 = [['B8', 'basic64-901226-01.bin', '57af4ae21d4b705c2991d98ed5c1f7b8'],
                ['K8', 'kernal64-dolphindos3.bin', 'fc8fb5ec89b34ae41c8dc20907447e06'],
                ['K128', 'kernal-dolphin128.rom', '854901919a2446bccf68e8392325c021']];
-  const dd26 = [['C64II', 'C64IIDolphinDos26.bin', '79d63d9378c70151aa6b3d217a69e883'],
+  const dd26 = [['C64II', 'C64IIDolphinDos26.bin', 'c6ea6480dfaf4fcf93cf3d4d49afa54e'],
                 de ? ['K128', 'C128DolphinDos26-DE.BIN', '77089a7e6fac9e23b013f499bba50597']
                    : ['K128', 'C128DolphinDos26-US.BIN', 'e0a1600c63ace1da02f9efba964ab291']];
   // SpeedDos26: bank 5 with the US keyboard, bank 6 with the German keyboard (both variants)
@@ -489,7 +492,7 @@ function checkState(state, other) {
   if (!msgs.some(m => m.lvl === 'err' || m.lvl === 'warn')) msgs.unshift({ lvl: 'ok', key: 'm_allok', args: [] });
   return { msgs, img, md5: md5(img) };
 }
-const VERSION = '2.1';
+const VERSION = '2.2';
 function projectOf(states, extra) {
   const t = {};
   for (const k in states) t[k] = { outName: states[k].outName, banks: states[k].banks.map(b => ({ mode: b.mode, copyOf: b.copyOf,
