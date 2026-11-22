@@ -20,9 +20,9 @@ b5548e911fd0c9e1aead3ff3c4e64282  hardware/gal/ATF16V8_PAL_Adressendecoder_V3_0P
 94761e14eabebae8913d40efe1ffe2ab  hardware/schematics/v3.3_C128DCR_1571_CIA6526_Parallel_Adapter.pdf
 e7fc4e70e0991ae9bf5f3e6e0c36c551  hardware/schematics/v3.3_C128DCR_THT_ROM_U32_Sockel_Kernal_Adapter.pdf
 a7fb94c702587d12c25520c6ababf2f1  hardware/schematics/v3.3_multi-speeder-schematic_512KB.pdf
-221a67202814aea6cd45532bef03bc68  manuals/de/MultiSpeederC128DCR-1571_Handbuch.pdf
-849efc09d6f8ad512886bc78ab6312ee  manuals/en/MultiSpeederC128DCR-1571_Manual.pdf
-59744e65e023c4637e14d3de09a112fd  ms-tools/ms-tools.d64
+a51be59135fd0a10540d00fe044db17f  manuals/de/MultiSpeederC128DCR-1571_Handbuch.pdf
+8b20066f46b889033bf32552eb3a94b5  manuals/en/MultiSpeederC128DCR-1571_Manual.pdf
+441fa726921bae293270f060ada2c97e  ms-tools/ms-tools.d64
 38eabb27f42403b83229def2080b8a9c  rom/C128DCR_KERNAL_29F040-DE.BIN
 7820ccc6b8de4a6f3b8dad44669afcf3  rom/C128DCR_KERNAL_29F040-US.BIN
 77089a7e6fac9e23b013f499bba50597  rom/C128DolphinDos26-DE.BIN
